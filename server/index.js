@@ -7,6 +7,7 @@ const MemoryStore = require('memorystore')(session);
 const interviewRouter = require('./routes/interview');
 const compileRouter = require('./routes/compile');
 const sessionRouter = require('./routes/session');
+const transcribeRouter = require('./routes/transcribe');
 const { getAvailableProviders } = require('./providers');
 
 const app = express();
@@ -41,6 +42,7 @@ app.get('/api/providers', (req, res) => {
 app.use('/api/chat', interviewRouter);
 app.use('/api/compile', compileRouter);
 app.use('/api/session', sessionRouter);
+app.use('/api/transcribe', transcribeRouter);
 
 app.listen(PORT, () => {
   console.log(`PersonaMirror server running on http://localhost:${PORT}`);

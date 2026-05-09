@@ -1,4 +1,5 @@
 const DOMAIN_LABELS = {
+  warmup: 'Warmup',
   voice: 'Voice',
   beliefs: 'Beliefs',
   decisions: 'Decisions',

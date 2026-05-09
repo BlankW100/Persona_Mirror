@@ -25,6 +25,7 @@ export default function InterviewPage() {
   const [compileUnlocked, setCompileUnlocked] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
+  const [mcqOptions, setMcqOptions] = useState(null);
 
   useEffect(() => {
     fetch('/api/providers', { credentials: 'include' })
@@ -52,8 +53,15 @@ export default function InterviewPage() {
     sendMessage('Ready.');
   }
 
+  function extractMCQOptions(text) {
+    const matches = [...text.matchAll(/^([A-D])\)\s*(.+)/gm)];
+    if (matches.length >= 2) return matches.map((m) => ({ letter: m[1], text: m[2].trim() }));
+    return null;
+  }
+
   async function sendMessage(text) {
     if (isStreaming) return;
+    setMcqOptions(null);
 
     setMessages((prev) => [...prev, { role: 'user', content: text }]);
     setStreamingContent('');
@@ -100,15 +108,19 @@ export default function InterviewPage() {
 
           if (event.domain) {
             const d = event.domain;
-            if (d !== 'complete') {
+            if (d === 'complete') {
+              setDomainProgress(DOMAIN_ORDER.slice(0, -1));
+              setCurrentDomain('complete');
+            } else if (d === 'warmup') {
+              setCurrentDomain('warmup');
+              // warmup doesn't advance the progress bar
+            } else {
               setCurrentDomain(d);
               setDomainProgress((prev) => {
                 const idx = DOMAIN_ORDER.indexOf(d);
                 const completed = DOMAIN_ORDER.slice(0, idx);
                 return [...new Set([...prev, ...completed])];
               });
-            } else {
-              setDomainProgress(DOMAIN_ORDER.slice(0, -1));
             }
           }
 
@@ -120,6 +132,7 @@ export default function InterviewPage() {
             ]);
             setStreamingContent('');
             setIsStreaming(false);
+            setMcqOptions(extractMCQOptions(accumulated));
           }
 
           if (event.error) {
@@ -408,6 +421,9 @@ export default function InterviewPage() {
         streamingContent={streamingContent}
         onSend={sendMessage}
         disabled={isStreaming || isCompiling}
+        useWhisper={availableProviders?.openai === true}
+        mcqOptions={mcqOptions}
+        onSelectMCQ={(letter) => sendMessage(letter)}
       />
     </div>
   );
