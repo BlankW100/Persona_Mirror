@@ -26,6 +26,7 @@ export default function InterviewPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
   const [mcqOptions, setMcqOptions] = useState(null);
+  const [disclaimerAcknowledged, setDisclaimerAcknowledged] = useState(false);
 
   useEffect(() => {
     fetch('/api/providers', { credentials: 'include' })
@@ -371,12 +372,49 @@ export default function InterviewPage() {
           ))}
         </div>
 
+        {/* Disclaimer */}
+        <div
+          style={{
+            width: '100%',
+            maxWidth: '440px',
+            padding: '16px',
+            borderRadius: '8px',
+            background: '#0e0e0e',
+            border: '1px solid #2a2a2a',
+          }}
+        >
+          <p style={{ fontFamily: 'monospace', fontSize: '11px', color: '#555', lineHeight: '1.7', margin: '0 0 12px 0' }}>
+            <span style={{ color: '#888' }}>Before you begin:</span>
+            {' '}PersonaMirror does not store, transmit, or retain any of your answers or compiled persona data. Everything lives in server memory for the duration of your session and is permanently deleted when you close the tab, the session expires, or compilation completes.{' '}
+            <br /><br />
+            The persona file you download is your responsibility. We are not liable for how it is used, shared, or applied — including use by third parties or in automated systems.
+          </p>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={disclaimerAcknowledged}
+              onChange={(e) => setDisclaimerAcknowledged(e.target.checked)}
+              style={{ accentColor: '#00ff88', marginTop: '2px', flexShrink: 0 }}
+            />
+            <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#666', lineHeight: '1.6' }}>
+              I understand that no data is saved and that I am responsible for my persona file.
+            </span>
+          </label>
+        </div>
+
         <button
           onClick={startInterview}
-          disabled={loading || !availableProviders?.[provider]}
+          disabled={loading || !availableProviders?.[provider] || !disclaimerAcknowledged}
           style={{
-            background: loading || !availableProviders?.[provider] ? '#1a1a1a' : '#00ff88',
-            color: loading || !availableProviders?.[provider] ? '#444' : '#000',
+            background: loading || !availableProviders?.[provider] || !disclaimerAcknowledged ? '#1a1a1a' : '#00ff88',
+            color: loading || !availableProviders?.[provider] || !disclaimerAcknowledged ? '#444' : '#000',
             border: 'none',
             borderRadius: '6px',
             padding: '12px 40px',
@@ -384,7 +422,7 @@ export default function InterviewPage() {
             fontSize: '14px',
             fontWeight: 'bold',
             letterSpacing: '0.05em',
-            cursor: loading || !availableProviders?.[provider] ? 'not-allowed' : 'pointer',
+            cursor: loading || !availableProviders?.[provider] || !disclaimerAcknowledged ? 'not-allowed' : 'pointer',
             transition: 'all 0.15s',
           }}
         >

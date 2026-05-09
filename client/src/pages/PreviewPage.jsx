@@ -91,7 +91,7 @@ export default function PreviewPage() {
             PersonaMirror
           </h1>
           <p style={{ color: '#555', fontSize: '12px', marginTop: '4px' }}>
-            Your persona document. Keep this private.
+            Your persona document. Keep this private — this page will not be available after you leave.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
