@@ -1,3 +1,59 @@
+function parseInline(text, keyPrefix) {
+  const segments = [];
+  const regex = /(\*\*[^*\n]+\*\*|\*[^*\n]+\*)/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push(
+        <span key={`${keyPrefix}-t${lastIndex}`}>{text.slice(lastIndex, match.index)}</span>
+      );
+    }
+    const raw = match[0];
+    if (raw.startsWith('**')) {
+      segments.push(<strong key={`${keyPrefix}-b${match.index}`}>{raw.slice(2, -2)}</strong>);
+    } else {
+      segments.push(<em key={`${keyPrefix}-i${match.index}`}>{raw.slice(1, -1)}</em>);
+    }
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    segments.push(
+      <span key={`${keyPrefix}-t${lastIndex}`}>{text.slice(lastIndex)}</span>
+    );
+  }
+
+  return segments.length > 0 ? segments : text;
+}
+
+function renderMarkdown(text) {
+  const lines = text.split('\n');
+  return lines.map((line, i) => {
+    if (line.trim() === '') {
+      return <div key={i} style={{ height: '0.5em' }} />;
+    }
+    if (line.startsWith('> ')) {
+      return (
+        <div
+          key={i}
+          style={{
+            borderLeft: '2px solid #00ff8850',
+            paddingLeft: '10px',
+            color: '#a0c0a8',
+            fontStyle: 'italic',
+            margin: '4px 0',
+          }}
+        >
+          {parseInline(line.slice(2), `L${i}`)}
+        </div>
+      );
+    }
+    return <div key={i}>{parseInline(line, `L${i}`)}</div>;
+  });
+}
+
 export default function MessageBubble({ role, content, isStreaming }) {
   const isUser = role === 'user';
 
@@ -13,19 +69,19 @@ export default function MessageBubble({ role, content, isStreaming }) {
       <div
         style={{
           maxWidth: '72%',
-          padding: '10px 14px',
+          padding: '12px 16px',
           borderRadius: isUser ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
           background: isUser ? '#0d2a1a' : '#161616',
           border: isUser ? '1px solid #00ff8830' : '1px solid #262626',
           fontFamily: isUser ? 'system-ui, sans-serif' : 'monospace',
           fontSize: isUser ? '14px' : '13px',
-          lineHeight: '1.6',
+          lineHeight: '1.7',
           color: isUser ? '#c8f5df' : '#d4d4d4',
-          whiteSpace: 'pre-wrap',
+          whiteSpace: isUser ? 'pre-wrap' : 'normal',
           wordBreak: 'break-word',
         }}
       >
-        {content}
+        {isUser ? content : renderMarkdown(content)}
         {isStreaming && (
           <span
             style={{
