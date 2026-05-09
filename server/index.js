@@ -14,7 +14,11 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: (origin, cb) => {
+    // Allow any localhost port (Vite picks a free port when 5173 is in use)
+    if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) return cb(null, true);
+    cb(new Error('CORS: not allowed'));
+  },
   credentials: true,
 }));
 
