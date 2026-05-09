@@ -48,7 +48,7 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    for await (const text of streamChat(provider, systemPrompt, messages, 1024)) {
+    for await (const text of streamChat(provider, systemPrompt, messages, 4096)) {
       textBuffer += text;
       fullResponse += text;
 

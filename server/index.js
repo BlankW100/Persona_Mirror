@@ -4,6 +4,14 @@ const cors = require('cors');
 const session = require('express-session');
 const MemoryStore = require('memorystore')(session);
 
+// Prevent unhandled rejections and exceptions from killing the process
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[unhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err.message);
+});
+
 const interviewRouter = require('./routes/interview');
 const compileRouter = require('./routes/compile');
 const sessionRouter = require('./routes/session');

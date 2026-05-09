@@ -76,7 +76,13 @@ async function* streamChat(provider, systemPrompt, messages, maxTokens = 1024) {
       contents: toGeminiContents(messages),
     });
     for await (const chunk of result.stream) {
-      const text = chunk.text();
+      let text;
+      try {
+        text = chunk.text();
+      } catch (_) {
+        // Gemini throws on safety blocks or unexpected finish reasons mid-stream
+        break;
+      }
       if (text) yield text;
     }
   } else {
