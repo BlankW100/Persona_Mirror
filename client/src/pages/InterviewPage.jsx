@@ -75,9 +75,14 @@ export default function InterviewPage() {
     });
 
     if (!response.ok) {
+      let detail = 'Could not reach the server.';
+      try {
+        const body = await response.json();
+        if (body.error) detail = body.error;
+      } catch { /* ignore */ }
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: '[Error connecting to server]' },
+        { role: 'system', content: `[SERVER · ${response.status}] ${detail} Your progress up to this point is intact — refresh and try again.` },
       ]);
       setIsStreaming(false);
       return;
@@ -88,65 +93,73 @@ export default function InterviewPage() {
     let buffer = '';
     let accumulated = '';
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
 
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        try {
-          const event = JSON.parse(line.slice(6));
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
 
-          if (event.text) {
-            accumulated += event.text;
-            setStreamingContent(accumulated);
-          }
-
-          if (event.domain) {
-            const d = event.domain;
-            if (d === 'complete') {
-              setDomainProgress(DOMAIN_ORDER.slice(0, -1));
-              setCurrentDomain('complete');
-            } else if (d === 'warmup') {
-              setCurrentDomain('warmup');
-              // warmup doesn't advance the progress bar
-            } else {
-              setCurrentDomain(d);
-              setDomainProgress((prev) => {
-                const idx = DOMAIN_ORDER.indexOf(d);
-                const completed = DOMAIN_ORDER.slice(0, idx);
-                return [...new Set([...prev, ...completed])];
-              });
+            if (event.text) {
+              accumulated += event.text;
+              setStreamingContent(accumulated);
             }
-          }
 
-          if (event.done) {
-            if (event.compileUnlocked) setCompileUnlocked(true);
-            setMessages((prev) => [
-              ...prev,
-              { role: 'assistant', content: accumulated },
-            ]);
-            setStreamingContent('');
-            setIsStreaming(false);
-            setMcqOptions(extractMCQOptions(accumulated));
-          }
+            if (event.domain) {
+              const d = event.domain;
+              if (d === 'complete') {
+                setDomainProgress(DOMAIN_ORDER.slice(0, -1));
+                setCurrentDomain('complete');
+              } else if (d === 'warmup') {
+                setCurrentDomain('warmup');
+              } else {
+                setCurrentDomain(d);
+                setDomainProgress((prev) => {
+                  const idx = DOMAIN_ORDER.indexOf(d);
+                  const completed = DOMAIN_ORDER.slice(0, idx);
+                  return [...new Set([...prev, ...completed])];
+                });
+              }
+            }
 
-          if (event.error) {
-            setMessages((prev) => [
-              ...prev,
-              { role: 'assistant', content: event.error },
-            ]);
-            setStreamingContent('');
-            setIsStreaming(false);
+            if (event.done) {
+              if (event.compileUnlocked) setCompileUnlocked(true);
+              setMessages((prev) => [
+                ...prev,
+                { role: 'assistant', content: accumulated },
+              ]);
+              setStreamingContent('');
+              setIsStreaming(false);
+              setMcqOptions(extractMCQOptions(accumulated));
+            }
+
+            if (event.error) {
+              if (accumulated) {
+                setMessages((prev) => [...prev, { role: 'assistant', content: accumulated }]);
+              }
+              setMessages((prev) => [...prev, { role: 'system', content: event.error }]);
+              setStreamingContent('');
+              setIsStreaming(false);
+            }
+          } catch {
+            // malformed SSE line — skip
           }
-        } catch {
-          // malformed SSE line — skip
         }
       }
+    } catch (networkErr) {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'system', content: `[NETWORK · CONNECTION LOST] The stream was interrupted before the response completed. Your conversation up to the previous message is intact. Check your connection and try again.` },
+      ]);
+      setStreamingContent('');
+      setIsStreaming(false);
     }
   }
 
@@ -174,6 +187,9 @@ export default function InterviewPage() {
 
   if (phase === 'select') {
     const loading = availableProviders === null;
+    const availableCount = availableProviders
+      ? Object.values(availableProviders).filter(Boolean).length
+      : 0;
 
     return (
       <div
@@ -204,6 +220,34 @@ export default function InterviewPage() {
             An identity interview. 25–40 questions. No right answers.
           </p>
         </div>
+
+        {/* Provider warning */}
+        {!loading && availableCount < 2 && (
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '440px',
+              padding: '10px 14px',
+              borderRadius: '7px',
+              background: '#1a1000',
+              border: '1px solid #ffaa0050',
+              fontFamily: 'monospace',
+              fontSize: '12px',
+              color: '#ffaa00',
+              lineHeight: '1.6',
+            }}
+          >
+            {availableCount === 0 ? (
+              <>
+                <strong>⚠ No providers configured.</strong> Set at least one API key in <code>server/.env</code> before starting.
+              </>
+            ) : (
+              <>
+                <strong>⚠ Only 1 provider configured.</strong> If it hits a rate limit mid-interview, the session will fail with no fallback. Add a second API key in <code>server/.env</code> for reliability.
+              </>
+            )}
+          </div>
+        )}
 
         {/* Provider selector */}
         <div style={{ width: '100%', maxWidth: '440px' }}>

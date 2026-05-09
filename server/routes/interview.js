@@ -84,8 +84,28 @@ router.post('/', async (req, res) => {
 
     res.write(`data: ${JSON.stringify({ done: true, compileUnlocked: req.session.compileUnlocked })}\n\n`);
   } catch (err) {
-    console.error('Stream error:', err.message);
-    res.write(`data: ${JSON.stringify({ error: `Provider error: ${err.message}. Try switching providers or check your API key.` })}\n\n`);
+    const raw = (err.message || '').toLowerCase();
+    const p = provider.toUpperCase();
+    let errorMsg;
+
+    if (raw.includes('rate') || raw.includes('429') || raw.includes('quota') || raw.includes('too many')) {
+      errorMsg = `[${p} · RATE LIMIT] This provider hit its request limit mid-response. Your conversation up to this point is intact — switch to a different provider and continue from your last answer.`;
+    } else if (raw.includes('safety') || raw.includes('blocked') || raw.includes('recitation')) {
+      errorMsg = `[${p} · CONTENT BLOCK] The AI flagged that response and could not complete it. Your progress is saved. Try rephrasing your last answer or switch providers.`;
+    } else if (raw.includes('401') || raw.includes('403') || raw.includes('api key') || raw.includes('authentication') || raw.includes('permission')) {
+      errorMsg = `[${p} · AUTH ERROR] The API key for this provider is invalid or has no remaining credits. Switch to a different provider — your progress is intact.`;
+    } else if (raw.includes('timeout') || raw.includes('econnreset') || raw.includes('etimedout') || raw.includes('network')) {
+      errorMsg = `[${p} · TIMEOUT] The connection to this provider timed out. Your progress is intact. Try again or switch providers.`;
+    } else if (raw.includes('context') || raw.includes('maximum context') || raw.includes('token') && raw.includes('length')) {
+      errorMsg = `[${p} · CONTEXT LIMIT] The conversation has grown too long for this provider's context window. Switch to Anthropic or OpenAI which support longer contexts — your progress is intact.`;
+    } else if (raw.includes('not configured') || raw.includes('api key not')) {
+      errorMsg = `[${p} · NOT CONFIGURED] No API key is set for this provider. Go back and select a provider that has a key configured.`;
+    } else {
+      errorMsg = `[${p} · ERROR] ${err.message || 'An unexpected error occurred.'} Your progress is intact — try switching providers.`;
+    }
+
+    console.error(`[interview:${provider}]`, err.message);
+    res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
   } finally {
     res.end();
   }

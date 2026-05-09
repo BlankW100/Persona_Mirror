@@ -56,6 +56,32 @@ function renderMarkdown(text) {
 
 export default function MessageBubble({ role, content, isStreaming }) {
   const isUser = role === 'user';
+  const isSystem = role === 'system';
+
+  if (isSystem) {
+    return (
+      <div style={{ padding: '0 16px', marginBottom: '12px' }}>
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: '8px',
+            background: '#1a1200',
+            border: '1px solid #ffaa0040',
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            lineHeight: '1.6',
+            color: '#ffcc44',
+            wordBreak: 'break-word',
+          }}
+        >
+          <div style={{ fontSize: '10px', color: '#ffaa0088', letterSpacing: '0.1em', marginBottom: '6px' }}>
+            SYSTEM
+          </div>
+          {renderMarkdown(content)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
