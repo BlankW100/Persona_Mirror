@@ -189,16 +189,16 @@ ${domainType === 'coding' ? `
 9. What does your tone do when you're trying to be direct but not hostile? Name the specific change — a word choice, a sentence structure, something observable.
 10. When you communicate at your best, what are you never doing? State it as a hard rule with a specific example of the violation.
 ` : `
-1. State your rule for the opening line of a professional message — not what you believe is good practice, what you actually do. What does a bad opening look like? Give a specific example.
-2. Give me a sentence from your own writing you'd call good — quote it or reconstruct it closely. What does it do that most sentences don't?
-3. What word or phrase do you use in your writing more than you realize? Quote it. Now quote the word you find hollow when others use it.
-4. State your rule for bullet points and lists: when do they earn their place, and when would you delete them? Give a bad example.
-5. What's your default message length? Name the condition that makes you write more. Name the condition that makes you cut.
-6. When you need to communicate something unwelcome in writing, what does your opening sentence look like? What do you refuse to open with? Give the bad version.
-7. What specific signal in someone's first paragraph tells you whether to trust their writing? Name the move, not the category.
-8. What phrase in a professional context makes you trust the sender less? Quote it exactly.
-9. What communication habit of yours has someone else noticed — positively or negatively? What did they say?
-10. When you're writing at your best, what do you never do? State it as a hard rule with a specific example of the violation.
+1. Let's start with who you are outside of any job title. What do you find yourself drifting toward when you have free time and no obligations? Not what you think you should say — what you actually end up doing.
+2. Name something you genuinely enjoy — a type of task, situation, or interaction you look forward to. What makes it good for you specifically?
+3. What do you have zero patience for? Something that makes you disengage or feel friction almost immediately — at work or outside it.
+4. What phrase do you say or write that people around you would recognize as "very you"? Try to quote it exactly — even if it's something small or a little embarrassing.
+5. What's a habit of yours that others notice? Something you do consistently — in conversation, at work, in how you approach things — that you may not always be aware of.
+6. How would you describe yourself in a few words? Now — how do people who know you well tend to describe you? Where's the gap between those two?
+7. When you need to get something across to someone, what's your instinct — do you write it out, say it directly, or show them with an example? What does your natural style look like?
+8. What word or phrase do you use in messages or conversation that sounds distinctly like you? And what word do others use that you'd never say?
+9. What's the fastest way for someone's message or writing to make you trust them — or lose trust — in the first few lines? Name the specific signal.
+10. What's something about how you communicate that you know is distinctly yours — a pattern, a habit, or a tendency — even if it sometimes creates friction?
 `}
 
 ---
