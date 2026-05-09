@@ -164,8 +164,8 @@ export default function InterviewPage() {
         const { error } = await res.json().catch(() => ({ error: 'Compile failed' }));
         throw new Error(error);
       }
-      const { persona } = await res.json();
-      navigate('/preview', { state: { persona } });
+      const { persona, aboutMe } = await res.json();
+      navigate('/preview', { state: { persona, aboutMe } });
     } catch (err) {
       alert('Compilation failed: ' + err.message);
       setIsCompiling(false);

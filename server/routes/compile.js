@@ -1,6 +1,7 @@
 const express = require('express');
 const { generateText } = require('../providers');
 const { getCompressionPrompt } = require('../prompts/compression');
+const { getDistillationPrompt } = require('../prompts/distillation');
 
 const router = express.Router();
 
@@ -27,22 +28,29 @@ router.post('/', async (req, res) => {
     .map((m) => `${m.role === 'user' ? 'USER' : 'ASSISTANT'}: ${m.content}`)
     .join('\n\n');
 
-  const systemPrompt = getCompressionPrompt();
-  const userMessage = `Domain type: ${domainType}\n\nTranscript:\n\n${transcriptText}`;
-
   try {
+    // Stage 1: forensic XML — structured analysis of the interview
     const persona = await generateText(
       provider,
-      systemPrompt,
-      [{ role: 'user', content: userMessage }],
+      getCompressionPrompt(),
+      [{ role: 'user', content: `Domain type: ${domainType}\n\nTranscript:\n\n${transcriptText}` }],
       4096
+    );
+
+    // Stage 2: about_me — distill forensic XML into a compact behavioral profile
+    // ready to be pasted as system prompt context in any AI session
+    const aboutMe = await generateText(
+      provider,
+      getDistillationPrompt(),
+      [{ role: 'user', content: persona }],
+      5000
     );
 
     req.session.destroy((err) => {
       if (err) console.error('Session destroy error after compile:', err.message);
     });
 
-    res.json({ persona });
+    res.json({ persona, aboutMe });
   } catch (err) {
     console.error('Compile error:', err.message);
     res.status(500).json({ error: `Provider error: ${err.message}` });
