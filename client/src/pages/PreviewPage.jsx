@@ -1,27 +1,101 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import JSZip from 'jszip';
 
 export default function PreviewPage() {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const persona = state?.persona || '';
-  const aboutMe = state?.aboutMe || '';
+
+  const forensicXml = state?.persona || '';
+  const personaMd = state?.aboutMe || '';
+  const skills = state?.skills || [];
+  const skillsJson = state?.skillsJson || [];
+  const manualMd = state?.manualMd || '';
+
+  const allTabs = [
+    {
+      key: 'aboutMe',
+      label: 'persona.md',
+      hint: 'Paste into any AI as system context',
+      content: personaMd,
+      filename: 'persona.md',
+    },
+    {
+      key: 'analysis',
+      label: 'analysis.xml',
+      hint: 'Forensic interview breakdown',
+      content: forensicXml,
+      filename: 'analysis.xml',
+    },
+    ...skills.map((s) => ({
+      key: `skill_${s.name}`,
+      label: `SKILL_${s.name}.md`,
+      hint: 'Agent skill definition',
+      content: s.skillMd || '',
+      filename: `SKILL_${s.name}.md`,
+    })),
+    ...(skillsJson.length > 0
+      ? [{
+          key: 'skillsJson',
+          label: 'skills.json',
+          hint: 'Paste into API tools[] array',
+          content: JSON.stringify(skillsJson, null, 2),
+          filename: 'skills.json',
+        }]
+      : []),
+    ...(manualMd
+      ? [{
+          key: 'manual',
+          label: 'manual.md',
+          hint: 'Usage guide for human and AI',
+          content: manualMd,
+          filename: 'manual.md',
+        }]
+      : []),
+  ];
+
   const [tab, setTab] = useState('aboutMe');
 
-  const content = tab === 'aboutMe' ? aboutMe : persona;
+  const activeTab = allTabs.find((t) => t.key === tab) || allTabs[0];
 
   function handleDownload() {
-    const ext = tab === 'aboutMe' ? 'md' : 'xml';
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    if (!activeTab) return;
+    const blob = new Blob([activeTab.content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `persona.${ext}`;
+    a.download = activeTab.filename;
     a.click();
     URL.revokeObjectURL(url);
   }
 
-  if (!persona && !aboutMe) {
+  async function handleDownloadAll() {
+    const zip = new JSZip();
+    zip.file('persona.md', personaMd);
+    if (skills.length > 0) {
+      const skillsFolder = zip.folder('skills');
+      skills.forEach((s) => {
+        skillsFolder.file(`SKILL_${s.name}.md`, s.skillMd || '');
+      });
+    }
+    if (skillsJson.length > 0) {
+      zip.file('skills.json', JSON.stringify(skillsJson, null, 2));
+    }
+    if (manualMd) {
+      zip.file('manual.md', manualMd);
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'persona_bundle.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const hasBundle = skills.length > 0 || manualMd;
+
+  if (!forensicXml && !personaMd) {
     return (
       <div
         style={{
@@ -53,11 +127,6 @@ export default function PreviewPage() {
       </div>
     );
   }
-
-  const tabs = [
-    { key: 'aboutMe', label: 'persona.md', hint: 'Paste into any AI as system context' },
-    { key: 'analysis', label: 'analysis.xml', hint: 'Forensic interview breakdown' },
-  ];
 
   return (
     <div
@@ -91,10 +160,10 @@ export default function PreviewPage() {
             PersonaMirror
           </h1>
           <p style={{ color: '#555', fontSize: '12px', marginTop: '4px' }}>
-            Your persona document. Keep this private — this page will not be available after you leave.
+            Your persona bundle. Keep this private — this page will not be available after you leave.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <button
             onClick={() => navigate('/')}
             style={{
@@ -110,6 +179,23 @@ export default function PreviewPage() {
           >
             New Interview
           </button>
+          {hasBundle && (
+            <button
+              onClick={handleDownloadAll}
+              style={{
+                background: 'transparent',
+                color: '#00ff88',
+                border: '1px solid #00ff8840',
+                borderRadius: '5px',
+                padding: '8px 16px',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              Download .zip
+            </button>
+          )}
           <button
             onClick={handleDownload}
             style={{
@@ -124,7 +210,7 @@ export default function PreviewPage() {
               cursor: 'pointer',
             }}
           >
-            Download .{tab === 'aboutMe' ? 'md' : 'xml'}
+            Download {activeTab?.filename || 'file'}
           </button>
         </div>
       </div>
@@ -136,9 +222,11 @@ export default function PreviewPage() {
           gap: '0',
           borderBottom: '1px solid #1e1e1e',
           marginBottom: '0',
+          overflowX: 'auto',
+          flexShrink: 0,
         }}
       >
-        {tabs.map(({ key, label, hint }) => (
+        {allTabs.map(({ key, label, hint }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -156,6 +244,8 @@ export default function PreviewPage() {
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
             }}
           >
             <span style={{ fontWeight: tab === key ? 'bold' : 'normal' }}>{label}</span>
@@ -172,7 +262,7 @@ export default function PreviewPage() {
         ))}
       </div>
 
-      {/* Usage hint for persona.md tab */}
+      {/* Per-tab usage hint */}
       {tab === 'aboutMe' && (
         <div
           style={{
@@ -190,14 +280,48 @@ export default function PreviewPage() {
           Copy the contents below and paste as the system prompt in Claude, ChatGPT, or Gemini to make it write and decide more like you.
         </div>
       )}
+      {tab === 'skillsJson' && (
+        <div
+          style={{
+            padding: '10px 16px',
+            background: '#0d1a2a',
+            border: '1px solid #4488ff20',
+            borderTop: 'none',
+            borderBottom: 'none',
+            fontFamily: 'monospace',
+            fontSize: '11px',
+            color: '#4488ff77',
+            letterSpacing: '0.04em',
+          }}
+        >
+          Paste this array as the <code>tools</code> parameter in any Anthropic, OpenAI, or compatible API call.
+        </div>
+      )}
+      {tab === 'manual' && (
+        <div
+          style={{
+            padding: '10px 16px',
+            background: '#1a1a0d',
+            border: '1px solid #ffaa0020',
+            borderTop: 'none',
+            borderBottom: 'none',
+            fontFamily: 'monospace',
+            fontSize: '11px',
+            color: '#ffaa0077',
+            letterSpacing: '0.04em',
+          }}
+        >
+          Usage instructions for you (the human) and the AI agent that will use this persona.
+        </div>
+      )}
 
       {/* Content */}
       <pre
         style={{
           background: '#0a0a0a',
           border: '1px solid #1e1e1e',
-          borderTop: tab === 'analysis' ? '1px solid #1e1e1e' : 'none',
-          borderRadius: tab === 'analysis' ? '0 0 8px 8px' : '0 0 8px 8px',
+          borderTop: (tab === 'analysis' || tab.startsWith('skill_')) ? '1px solid #1e1e1e' : 'none',
+          borderRadius: '0 0 8px 8px',
           padding: '24px',
           fontFamily: 'monospace',
           fontSize: '12px',
@@ -210,7 +334,7 @@ export default function PreviewPage() {
           marginTop: 0,
         }}
       >
-        {content || '(empty)'}
+        {activeTab?.content || '(empty)'}
       </pre>
     </div>
   );

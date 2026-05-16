@@ -1,16 +1,19 @@
 # PersonaMirror
 
-PersonaMirror is an AI-powered identity interview platform. It runs a structured behavioral interview, then compiles the transcript into a reusable **persona file** — a document you can paste into any AI system to make it write, decide, and respond more like a specific person.
+PersonaMirror is an AI-powered identity interview platform. It runs a structured behavioral interview, then compiles the transcript into a complete **agent bundle** — everything needed to deploy an AI that writes, decides, and responds like a specific person.
 
 ---
 
 ## What It Does
 
 1. **Interviews the user** across five behavioral domains: Voice, Beliefs, Decisions, Conflict, and Taste
-2. **Compiles the transcript** into two outputs:
-   - `persona.md` — a compact profile ready to paste as an AI system prompt
-   - `analysis.xml` — a forensic breakdown with confidence scores, behavioral cluster, and contradiction flags
-3. **Lets you download** either output for use in other AI tools
+2. **Compiles the transcript** into a full agent bundle:
+   - `persona.md` — a compact identity profile ready to paste as an AI system prompt
+   - `SKILL_<name>.md` — one file per skill, defining callable actions grounded in the persona's behavioral patterns
+   - `skills.json` — machine-readable Anthropic tool schemas, ready to paste into any API `tools[]` array
+   - `manual.md` — usage guide with instructions for the human and inline instructions for the AI agent
+   - `analysis.xml` — the full forensic breakdown with confidence scores, behavioral cluster, and contradiction flags
+3. **Lets you download** individual files per tab, or the entire bundle as a `.zip`
 
 The interview is conversational. The science layer (OCEAN personality mapping, situational judgment probes, behavioral inference) runs invisibly underneath — the user just talks.
 
@@ -107,20 +110,43 @@ The progress bar across the top tracks completed domains.
 
 ### Step 4 — Compile Persona
 
-When the interview completes, the **Compile Persona** button activates. Click it. The server runs two stages:
+When the interview completes, the **Compile Persona** button activates. Click it. The server runs five stages in sequence. The button label updates as each stage begins:
 
 1. **Compression** — The raw transcript is turned into a detailed forensic XML document. This includes voice fingerprint, beliefs, decision heuristics, conflict signature, taste profile, hard refusals, phrase bank, golden examples, productive contradictions, and confidence scores per domain.
 
-2. **Distillation** — The forensic XML is compressed into a token-optimized `about_me` profile (2,000–5,000 tokens). Every line passes the test: "If this line disappeared, would an AI write differently?"
+2. **Distillation** — The forensic XML is compressed into a token-optimized `persona.md` (2,000–5,000 tokens). Every line passes the test: "If this line disappeared, would an AI write differently?"
+
+3. **Skill analysis** — The forensic XML is analyzed to identify 2–5 skills that would be genuinely useful for this specific persona. Each skill is grounded in a specific behavioral signal from the interview (e.g., a strong voice pattern drives a `write_in_voice` skill; a distinctive decision style drives an `evaluate_options` skill).
+
+4. **Skill generation** — Each identified skill is built individually into a `SKILL_<name>.md` (step-by-step instructions for the agent) and a JSON tool schema (for API tool use). One LLM call per skill.
+
+5. **Manual generation** — The persona.md and all skills are synthesized into a `manual.md` with two sections: instructions for the human (what each file is, how to use with Claude.ai or the API) and instructions for the AI agent (persona pasted inline, skills listed with trigger conditions).
+
+Total compile time is typically 2–5 minutes depending on the number of skills and provider speed.
 
 ### Step 5 — Review and Download
 
-The results page shows two tabs:
+The results page shows tabs for every file in the bundle. Tabs appear dynamically based on what the compile pipeline produced:
 
-- **persona.md** — The distilled profile. Copy and paste this as a system prompt into any AI tool.
-- **analysis.xml** — The full forensic breakdown. Useful for inspection, debugging, or downstream processing.
+| Tab | Contents |
+|---|---|
+| **persona.md** | Distilled identity profile. Paste as a system prompt. |
+| **SKILL_\<name\>.md** | One tab per skill. Human-readable definition with instructions, triggers, and examples. |
+| **skills.json** | All tool schemas in a single array. Paste into any API `tools[]` parameter. |
+| **manual.md** | Full usage guide for the human and the AI agent. |
+| **analysis.xml** | Full forensic breakdown. Useful for inspection or debugging. |
 
-Download either file using the button in the top-right corner.
+Use the **Download \<filename\>** button to save the current tab, or **Download .zip** to get the entire bundle as a structured zip file:
+
+```
+persona.md
+skills/
+  SKILL_write_in_voice.md
+  SKILL_evaluate_options.md
+  ...
+skills.json
+manual.md
+```
 
 ---
 
@@ -140,8 +166,11 @@ Download either file using the button in the top-right corner.
 │                                 │     │                                  │
 │  PreviewPage                    │     │  prompts/                        │
 │    └─ persona.md tab            │     │    └─ elicitation.js (interview) │
-│    └─ analysis.xml tab          │     │    └─ compression.js (forensic)  │
-│    └─ Download button           │     │    └─ distillation.js (compact)  │
+│    └─ SKILL_*.md tabs           │     │    └─ compression.js (forensic)  │
+│    └─ skills.json tab           │     │    └─ distillation.js (persona)  │
+│    └─ manual.md tab             │     │    └─ skill_analysis.js          │
+│    └─ analysis.xml tab          │     │    └─ skill_schema.js            │
+│    └─ Download / .zip buttons   │     │    └─ manual.js                  │
 └─────────────────────────────────┘     └──────────────────────────────────┘
 ```
 
@@ -149,7 +178,11 @@ Download either file using the button in the top-right corner.
 
 **Domain tokens in output** — The AI embeds `[DOMAIN:warmup]`, `[DOMAIN:voice]` etc. directly in its streamed response. The client strips these out and uses them to update the progress bar and current domain badge, without a separate API call.
 
-**Two-stage compilation** — Compression preserves full fidelity (forensic XML with confidence metadata). Distillation then optimizes for token efficiency. Separating the two stages means the forensic data is always available for inspection even if the distilled output is adjusted.
+**Five-stage compilation** — The pipeline runs in sequence: Compression (transcript → forensic XML) → Distillation (XML → persona.md) → Skill Analysis (XML → skill list) → Skill Generation (one call per skill → SKILL.md + tool schema) → Manual Generation (persona + skills → manual.md). Stages 3–5 are fault-tolerant: if skill generation fails, the compile still returns persona.md. Each stage is a separate LLM call, keeping prompts focused and outputs independently auditable.
+
+**System prompt vs. skill separation** — persona.md defines *who the agent is* (identity, tone, values — always loaded). SKILL_*.md and skills.json define *what the agent does* (callable actions with inputs, outputs, and trigger conditions — invoked on demand). Mixing these concerns into a single document produces an agent that is harder to steer and harder to extend. The bundle keeps them separate so each can be updated independently.
+
+**JSON-only structured outputs** — The skill analysis and skill schema stages instruct the model to return only parseable JSON. A `cleanJson()` helper strips markdown code fences that models sometimes emit despite instructions. All `JSON.parse()` calls are wrapped in try/catch with raw output logging so failures are debuggable without crashing the compile.
 
 **Provider abstraction** — A single `streamChat()` and `generateText()` interface normalizes the three different LLM SDKs. You can switch providers mid-interview without any other code changes.
 
@@ -181,7 +214,7 @@ Persona_Mirror/
 │   ├── .env                  API keys (gitignored)
 │   ├── routes/
 │   │   ├── interview.js      SSE streaming chat
-│   │   ├── compile.js        Two-stage persona generation
+│   │   ├── compile.js        Five-stage persona + skill bundle generation
 │   │   ├── session.js        Session init / state / reset
 │   │   └── transcribe.js     Whisper audio transcription
 │   ├── providers/
@@ -189,14 +222,17 @@ Persona_Mirror/
 │   └── prompts/
 │       ├── elicitation.js    Full interview question framework
 │       ├── compression.js    Forensic XML persona compiler
-│       └── distillation.js   Token-optimized about_me generator
+│       ├── distillation.js   Token-optimized persona.md generator
+│       ├── skill_analysis.js Identifies 2–5 skills from forensic XML
+│       ├── skill_schema.js   Generates SKILL.md + tool schema per skill
+│       └── manual.js         Generates usage manual for human + AI agent
 │
 ├── client/
 │   └── src/
 │       ├── App.jsx            Routes (/ and /preview)
 │       ├── pages/
-│       │   ├── InterviewPage.jsx   Interview UI and state
-│       │   └── PreviewPage.jsx     Results and download
+│       │   ├── InterviewPage.jsx   Interview UI, state, and step-progress compile
+│       │   └── PreviewPage.jsx     Dynamic tabs, per-file download, zip export
 │       └── components/
 │           ├── ChatWindow.jsx      Message stream + voice input + MCQ buttons
 │           ├── MessageBubble.jsx   Markdown-rendering message display
@@ -204,6 +240,7 @@ Persona_Mirror/
 │           └── ProgressBar.jsx     Five-domain completion tracker
 │
 ├── .env.example              Environment variable template
+├── OVERVIEW.md               Developer reference for the full pipeline
 ├── README.md
 └── REQUIREMENTS.md
 ```
@@ -228,3 +265,9 @@ Whisper requires `OPENAI_API_KEY`. If not configured, the browser Web Speech API
 
 **Compile button never appears**
 The interview must reach `[DOMAIN:complete]` before the compile button unlocks. If the AI stops early, refresh and try again. Long silences or network drops can interrupt the SSE stream.
+
+**Compile is taking a long time**
+The pipeline now runs five sequential LLM calls (compression, distillation, skill analysis, one call per skill, manual generation). Expect 2–5 minutes for a full compile. The button label updates at each stage to confirm progress. If the request times out, check your provider's rate limits or try a different provider.
+
+**No skill tabs appear on the preview page**
+Skill generation is fault-tolerant — if the skill analysis or schema stages fail to parse valid JSON, they are skipped and only `persona.md` and `analysis.xml` are returned. Check the server console for `Skill analysis JSON parse error` or `Skill schema JSON parse error` messages. This can happen if the provider returns malformed output; retrying the compile usually resolves it.

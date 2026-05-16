@@ -25,6 +25,7 @@ export default function InterviewPage() {
   const [compileUnlocked, setCompileUnlocked] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
+  const [compileStep, setCompileStep] = useState(0);
   const [mcqOptions, setMcqOptions] = useState(null);
   const [disclaimerAcknowledged, setDisclaimerAcknowledged] = useState(false);
 
@@ -164,9 +165,25 @@ export default function InterviewPage() {
     }
   }
 
+  const COMPILE_STEPS = [
+    'Compiling persona...',
+    'Analyzing skills...',
+    'Building skills...',
+    'Writing manual...',
+    'Finalizing...',
+  ];
+
   async function handleCompile() {
     if (!compileUnlocked || isCompiling) return;
     setIsCompiling(true);
+    setCompileStep(0);
+
+    let step = 0;
+    const stepTimer = setInterval(() => {
+      step = Math.min(step + 1, COMPILE_STEPS.length - 1);
+      setCompileStep(step);
+    }, 40000);
+
     try {
       const res = await fetch('/api/compile', {
         method: 'POST',
@@ -174,15 +191,26 @@ export default function InterviewPage() {
         credentials: 'include',
         body: JSON.stringify({ provider }),
       });
+      clearInterval(stepTimer);
       if (!res.ok) {
         const { error } = await res.json().catch(() => ({ error: 'Compile failed' }));
         throw new Error(error);
       }
-      const { persona, aboutMe } = await res.json();
-      navigate('/preview', { state: { persona, aboutMe } });
+      const { persona, aboutMe, skills, skillsJson, manualMd } = await res.json();
+      navigate('/preview', {
+        state: {
+          persona,
+          aboutMe,
+          skills: skills || [],
+          skillsJson: skillsJson || [],
+          manualMd: manualMd || '',
+        },
+      });
     } catch (err) {
+      clearInterval(stepTimer);
       alert('Compilation failed: ' + err.message);
       setIsCompiling(false);
+      setCompileStep(0);
     }
   }
 
@@ -491,7 +519,7 @@ export default function InterviewPage() {
               cursor: isCompiling ? 'not-allowed' : 'pointer',
             }}
           >
-            {isCompiling ? 'Compiling…' : 'Compile Persona'}
+            {isCompiling ? COMPILE_STEPS[compileStep] : 'Compile Persona'}
           </button>
         )}
       </div>

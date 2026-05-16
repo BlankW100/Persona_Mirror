@@ -96,6 +96,7 @@ Installed via `cd client && npm install`
 | `react` | ^18.3.1 | UI framework |
 | `react-dom` | ^18.3.1 | DOM rendering |
 | `react-router-dom` | ^6.28.0 | Client-side routing |
+| `jszip` | ^3.10.1 | Client-side zip generation for bundle download |
 | `vite` | ^6.0.5 | Development server + build tool |
 | `@vitejs/plugin-react` | ^4.3.4 | React JSX transform for Vite |
 
@@ -154,7 +155,7 @@ Chrome or Edge recommended for full feature support including the Web Speech API
 
 ## Known Constraints
 
-**No persistence** — Interview transcripts are not saved to disk. If the server restarts mid-interview, the session is lost. The compiled outputs (persona.md and analysis.xml) must be downloaded before leaving the preview page.
+**No persistence** — Interview transcripts are not saved to disk. If the server restarts mid-interview, the session is lost. All compiled outputs (persona.md, SKILL_*.md, skills.json, manual.md, analysis.xml) must be downloaded before leaving the preview page. The **Download .zip** button on the preview page saves the full bundle in one step.
 
 **In-memory only** — All session data lives in RAM. For production use, swap `memorystore` for a Redis-backed session store and add proper persistence.
 
